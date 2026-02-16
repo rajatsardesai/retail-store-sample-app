@@ -64,5 +64,3 @@ To clean up:
 ```
 docker compose down
 ```
-
-# Test Commits
