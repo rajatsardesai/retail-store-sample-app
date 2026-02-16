@@ -13,7 +13,6 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     outputs:
-      changed-services: ${{ steps.changes.outputs.changed-services }}
       matrix: ${{ steps.changes.outputs.matrix }}
       has-changes: ${{ steps.changes.outputs.has-changes }}
     steps:
@@ -25,19 +24,27 @@ jobs:
         id: changes
         run: |
           SERVICES=("ui" "catalog" "cart" "orders" "checkout")
-          CHANGED_SERVICES=()
+          CHANGED=()
 
           echo "Checking for changes in services..."
 
           # Check for changes in each service directory
           for SERVICE in "${SERVICES[@]}"; do
             if git diff --name-only HEAD^ HEAD | grep -q "^src/$SERVICE/"; then
-              CHANGED_SERVICES+=("$SERVICE")
+              CHANGED+=("\"$SERVICE\"")
+              echo "Found changes in: $SERVICE"
             fi
           done
-          echo "changed-services=${CHANGED_SERVICES[*]}" >> $GITHUB_OUTPUT
-          echo "matrix=${CHANGED_SERVICES[*]}" >> $GITHUB_OUTPUT
-          echo "has-changes=${#CHANGED_SERVICES[@]}" >> $GITHUB_OUTPUT
+
+          if [ ${#CHANGED[@]} -eq 0 ]; then
+            echo "matrix={\"service\":[]}" >> $GITHUB_OUTPUT
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+          else
+            MATRIX_JSON="{\"service\":[$(IFS=,; echo "${CHANGED[*]}")]}"
+            echo "matrix=$MATRIX_JSON" >> $GITHUB_OUTPUT
+            echo "has-changes=true" >> $GITHUB_OUTPUT
+            echo "Matrix: $MATRIX_JSON"
+          fi
 
   deploy:
     name: Deploy ${{ matrix.service }}
